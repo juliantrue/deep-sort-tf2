@@ -13,8 +13,7 @@ from .deep import model as Extractor
 class DeepSortTracker(object):
     def __init__(
         self,
-        model,
-        classes,
+        model=None,
         nn_budget=100,
         max_cosine_distance=0.5,
         nms_max_overlap=0.3,
@@ -24,7 +23,6 @@ class DeepSortTracker(object):
         """asdfasdfasdasdf"""
 
         self.model = model
-        self.classes = classes
 
         # Load the feature extraction network from checkpoints
         parent_dir = os.path.dirname(__file__)
@@ -41,17 +39,14 @@ class DeepSortTracker(object):
 
     def _preprocess(self, img, size):
         """asdfasdfasdf"""
-        img_in = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img_in = tf.expand_dims(img_in, 0)
         img_in = tf.image.resize(img_in, (size, size))
         img_in = img_in / 255
 
     def _postprocess(self, output):
-        return output[0]
+        return output
 
-    def track(self, img, preprocess=None, postprocess=None, tlbr=True):
-        """asdfasdfsd"""
-        # Preprocess the image according to user defined function if specified
+    def _inference(self, img, preprocess=None, postprocess=None):
         if preprocess:
             img_in = preprocess(img)
 
@@ -68,6 +63,17 @@ class DeepSortTracker(object):
 
         else:
             bboxes, scores = self._postprocess(output)
+
+        return bboxes, scores
+
+    def track(self, img, preprocess=None, postprocess=None, detections=None, tlbr=True):
+        """asdfasdfsd"""
+        # Preprocess the image according to user defined function if specified
+        if detections:
+            bboxes, scores = detections
+
+        else:
+            bboxes, scores = self._inference(img, preprocess, postprocess)
 
         detections = []
         for i in range(len(bboxes)):
