@@ -108,8 +108,6 @@ def create_detections(detection_mat, frame_idx, min_height=0):
             continue
 
         else:
-            bbox[:2] += bbox[2:] / 2
-            bbox[2] /= bbox[3]
             bboxes.append(bbox)
             scores.append(confidence)
 

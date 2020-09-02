@@ -85,13 +85,16 @@ class DeepSortTracker(object):
 
             # Unpack the bbox
             bbox = bboxes[i]
-            top, left, bottom, right = bbox
+            top, left, width, height = map(lambda x: int(x), bbox)
+            right = left + width
+            bottom = top + height
 
             # Extract feature vector
             patch = img[left:right, top:bottom]
             patch = tf.expand_dims(patch, 0)
-            patch = tf.image.resize(img, [64, 128])
-            feature = self.extractor.predict(patch)
+            patch = tf.image.resize(patch, [64, 128])
+            patch /= 255
+            feature = np.squeeze(self.extractor.predict(patch))
 
             # Create detection
             detections.append(Detection(bbox, score, feature))
@@ -108,6 +111,7 @@ class DeepSortTracker(object):
 
         # Pack up the output
         bboxes = []
+        track_ids = []
         for track in self.tracker.tracks:
             if not track.is_confirmed() or track.time_since_update > 1:
                 continue
@@ -119,5 +123,6 @@ class DeepSortTracker(object):
                 bbox = track.to_tlwh()
 
             bboxes.append(bbox)
+            track_ids.append(track.track_id)
 
-        return bboxes
+        return bboxes, track_ids
