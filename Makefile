@@ -1,5 +1,7 @@
 pwd=${PWD}
-project_name=cosine-metric-learning
+project_name=deep-sort-tf2
+MOT16_PATH=/home/julian/Datasets/MOT16
+
 .PHONY: all
 all: build run
 
@@ -9,7 +11,11 @@ build:
 
 .PHONY: run
 run: 
-	sudo docker run --gpus all --rm --network=host -it -v ${pwd}:/${project_name} ${project_name}:latest bash
+	sudo docker run --gpus all \
+		--rm --network=host -it \
+		-v ${MOT16_PATH}:/MOT16 \
+		-v ${pwd}:/${project_name} \
+		${project_name}:latest bash
 
 .PHONY: clean
 clean:

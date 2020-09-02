@@ -11,9 +11,9 @@ from application_util import gather_sequence_info, create_detections
 
 def main():
     # Configuration
-    sequence_dir = ""
-    detection_file = ""
-    output_file = ""
+    sequence_dir = "/MOT16/train/MOT16-02"
+    detection_file = "/MOT16/train/MOT16-02/det/det.txt"
+    output_file = "output.txt"
     min_detection_height = 0
 
     # Initialize the tracker
