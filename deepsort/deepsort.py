@@ -7,7 +7,7 @@ from .sort.detection import Detection
 from .sort.nn_matching import NearestNeighborDistanceMetric
 from .sort.preprocessing import non_max_suppression
 from .sort.tracker import Tracker
-from .deep import model as Extractor
+from .deep import Model as Extractor
 
 
 class DeepSortTracker(object):
