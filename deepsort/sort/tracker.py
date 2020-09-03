@@ -47,7 +47,7 @@ class Tracker:
 
         self.kf = kalman_filter.KalmanFilter()
         self.tracks = []
-        self._next_id = str(uuid.uuid4())
+        self._next_id = 1  # str(uuid.uuid4())
 
     def predict(self):
         """Propagate track state distributions one time step forward.
@@ -158,4 +158,4 @@ class Tracker:
                 detection.feature,
             )
         )
-        self._next_id = str(uuid.uuid4())
+        self._next_id += 1

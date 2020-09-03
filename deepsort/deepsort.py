@@ -92,6 +92,9 @@ class DeepSortTracker(object):
             # Extract feature vector
             patch = img[left:right, top:bottom]
             patch = tf.expand_dims(patch, 0)
+            if 0 in patch.shape:
+                continue
+
             patch = tf.image.resize(patch, [64, 128])
             patch /= 255
             feature = np.squeeze(self.extractor.predict(patch))

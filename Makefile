@@ -11,8 +11,11 @@ build:
 
 .PHONY: run
 run: 
+	xhost + 
 	sudo docker run --gpus all \
 		--rm --network=host -it \
+		-e DISPLAY=${DISPLAY} \
+		-v /tmp/.X11-unix/:/tmp/.X11-unix \
 		-v ${MOT16_PATH}:/MOT16 \
 		-v ${pwd}:/${project_name} \
 		${project_name}:latest bash
