@@ -20,6 +20,20 @@ run:
 		-v ${pwd}:/${project_name} \
 		${project_name}:latest bash
 
+.PHONY: train
+train:
+	python3 deepsort/deep/train.py
+
+.PHONY: test
+test:
+	python3 deepsort/deep/test.py
+
+.PHONY: eval
+eval:
+	python3 evaluate.py 
+	python3 -u -m motmetrics.apps.eval_motchallenge /MOT16/train ./results/
+
+
 .PHONY: clean
 clean:
 	sudo rm -r ./logs/*
