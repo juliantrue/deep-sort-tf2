@@ -9,9 +9,12 @@ from tensorflow.keras.metrics import SparseCategoricalAccuracy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import (
     LearningRateScheduler,
+    ReduceLROnPlateau,
     ModelCheckpoint,
     TensorBoard,
 )
+
+from tensorboard.plugins.hparams import api as hp
 
 from model import Model
 from dataset import load_train_dataset, load_test_dataset
@@ -23,11 +26,18 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     "test_dataset", "data/test", "Path to testing dataset",
 )
+flags.DEFINE_string("logdir", "logs", "Path to logdir")
 flags.DEFINE_integer("epochs", 10, "number of epochs")
 flags.DEFINE_integer("batch_size", 128, "batch size")
 flags.DEFINE_float("learning_rate", 1e-3, "learning rate")
-flags.DEFINE_boolean(
-    "eager", False, "Execute training with gradient tape (True) or graph mode (False)",
+flags.DEFINE_enum(
+    "train_mode",
+    "graph",
+    ["eager", "graph", "hyperparameter"],
+    (
+        "Execute training with gradient tape training, graph mode training, or full "
+        "hyperparameter grid search."
+    ),
 )
 
 
@@ -43,7 +53,7 @@ def main(argv):
     logging.info("Creating model and starting training.")
     model = Model((FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True)
 
-    if FLAGS.eager:
+    if FLAGS.train_mode == "eager":
         optimizer = Adam(FLAGS.learning_rate)
         loss_fn = SparseCategoricalCrossentropy(from_logits=True)
         acc = SparseCategoricalAccuracy()
@@ -52,8 +62,6 @@ def main(argv):
         avg_val_loss = tf.keras.metrics.Mean()
 
         # Iterate over epochs.
-        import numpy as np
-
         for epoch in range(FLAGS.epochs):
             print("Start of epoch %d" % (epoch,))
 
@@ -100,7 +108,7 @@ def main(argv):
             avg_val_loss.reset_state()
             avg_acc.reset_state()
 
-    else:
+    elif FLAGS.train_mode == "graph":
 
         def scheduler(epoch):
 
@@ -122,7 +130,7 @@ def main(argv):
         callbacks = [
             LearningRateScheduler(scheduler, verbose=1),
             ModelCheckpoint("checkpoints/cml_{epoch}.tf", save_weights_only=True),
-            TensorBoard(log_dir="logs", histogram_freq=1, update_freq=1000),
+            TensorBoard(log_dir=FLAGS.logdir, histogram_freq=1, update_freq=1000),
         ]
 
         history = model.fit(
@@ -132,6 +140,50 @@ def main(argv):
             validation_data=test_dataset,
             verbose=1,
         )
+
+    elif FLAGS.train_mode == "hyperparameter":
+
+        # Declare the ranges of the sweep
+        HP_LR_TYPES = hp.HParam("lr_type", hp.Discrete["static", "dynamic"])
+        HP_LRS = hp.HParam("learning_rate", hp.Discrete([1e-2, 1e-3]))
+        HP_EPOCHS = hp.HParam("epochs", hp.Discrete([5, 10, 15]))
+
+        def run(model, hparams):
+            model.compile(
+                optimizer=Adam(hparams["learning_rate"]),
+                loss=SparseCategoricalCrossentropy(from_logits=True),
+                metrics=[SparseCategoricalAccuracy()],
+            )
+
+            if hparams["lr_type"] == "static":
+                callbacks = [
+                    TensorBoard(log_dir=FLAGS.logdir),
+                    hp.KerasCallback(FLAGS.logdir, hparams),  # log hparams
+                ]
+
+            else:
+                callbacks = [
+                    ReduceLROnPlateau(patience=3),
+                    TensorBoard(log_dir=FLAGS.logdir),
+                    hp.KerasCallback(FLAGS.logdir, hparams),  # log hparams
+                ]
+
+            history = model.fit(
+                train_dataset,
+                epochs=hparams["epochs"],
+                callbacks=callbacks,
+                validation_data=test_dataset,
+            )
+
+        # Perform the grid search
+        for lr_type in HP_LR_TYPES.domain.values:
+            for lr in HP_LRS.domain.values:
+                for epochs in HP_EPOCHS.domain.values:
+                    hparams = {
+                        HP_LR_TYPES: lr_type,
+                        HP_LRS: lr,
+                        HP_EPOCHS: epochs,
+                    }
 
 
 if __name__ == "__main__":
