@@ -14,6 +14,7 @@ from tensorflow.keras.callbacks import (
 )
 
 from model import Model
+from dataset import load_train_dataset, load_test_dataset
 
 
 flags.DEFINE_string(
@@ -25,93 +26,18 @@ flags.DEFINE_string(
 flags.DEFINE_integer("epochs", 10, "number of epochs")
 flags.DEFINE_integer("batch_size", 128, "batch size")
 flags.DEFINE_float("learning_rate", 1e-3, "learning rate")
-flags.DEFINE_integer("img_width", 64, "image width")
-flags.DEFINE_integer("img_height", 128, "image height")
 flags.DEFINE_boolean(
     "eager", False, "Execute training with gradient tape (True) or graph mode (False)",
 )
 
 
-def transform_and_augment_images(x_train, size):
-    re_size = [size[0] + 5, size[1] + 5]
-    x_train = tf.image.resize(x_train, re_size, method="bicubic")
-    x_train = x_train / 255
-    x_train = tf.image.random_flip_left_right(x_train)
-    x_train = tf.image.random_jpeg_quality(x_train, 50, 95)
-    x_train = tf.image.random_crop(x_train, size=[size[0], size[1], 3])
-    return x_train
-
-
-def transform_images(x_train, size):
-    x_train = tf.image.resize(x_train, size, method="bicubic")
-    x_train = x_train / 255
-    return x_train
-
-
-def parse_tfrecord(example_proto, feature_description):
-    # Parse the input tf.Example proto using the dictionary above.
-    example = tf.io.parse_example(example_proto, feature_description)
-    image = tf.image.decode_jpeg(example["image/encoded"])
-    label = example["label"]
-    return image, label
-
-
 def main(argv):
-    feature_description = {
-        "label": tf.io.FixedLenFeature([], tf.int64),
-        "image/encoded": tf.io.FixedLenFeature([], tf.string),
-    }
-
     logging.info("Loading training dataset...")
-    train_filenames = [
-        os.path.join(FLAGS.train_dataset, path)
-        for path in os.listdir(FLAGS.train_dataset)
-    ]
+    train_dataset = load_train_dataset(FLAGS.train_dataset, FLAGS.batch_size)
+    logging.info("Done!")
 
-    test_filenames = [
-        os.path.join(FLAGS.test_dataset, path)
-        for path in os.listdir(FLAGS.test_dataset)
-    ]
-    filenames = train_filenames + test_filenames
-    full_dataset = tf.data.TFRecordDataset(filenames=filenames)
-    full_dataset = full_dataset.map(lambda x: parse_tfrecord(x, feature_description))
-    full_dataset = full_dataset.shuffle(buffer_size=8192)
-
-    # Break the dataset into training, testing
-    # 80/20 split
-    def is_test(x, y):
-        return x % 5 == 0
-
-    def is_train(x, y):
-        return not is_test(x, y)
-
-    recover = lambda x, y: y
-
-    test_dataset = full_dataset.enumerate().filter(is_test).map(recover)
-    train_dataset = full_dataset.enumerate().filter(is_train).map(recover)
-
-    train_dataset = train_dataset.map(
-        lambda x, y: (
-            transform_and_augment_images(x, [FLAGS.img_height, FLAGS.img_width]),
-            y,
-        )
-    )
-    train_dataset = train_dataset.batch(FLAGS.batch_size)
-    # logging.info("Done!")
-
-    # logging.info("Loading testing dataset...")
-    # test_dataset = tf.data.TFRecordDataset(
-    #    filenames=[
-    #        os.path.join(FLAGS.test_dataset, path)
-    #        for path in os.listdir(FLAGS.test_dataset)
-    #    ]
-    # )
-    # test_dataset = test_dataset.shuffle(buffer_size=4096)
-    # test_dataset = test_dataset.map(lambda x: parse_tfrecord(x, feature_description))
-    test_dataset = test_dataset.map(
-        lambda x, y: (transform_images(x, [FLAGS.img_height, FLAGS.img_width]), y)
-    )
-    test_dataset = test_dataset.batch(FLAGS.batch_size)
+    logging.info("Loading test dataset...")
+    test_dataset = load_test_dataset(FLAGS.test_dataset, FLAGS.batch_size)
     logging.info("Done!")
 
     logging.info("Creating model and starting training.")
