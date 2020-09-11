@@ -51,9 +51,10 @@ def main(argv):
     logging.info("Done!")
 
     logging.info("Creating model and starting training.")
-    model = Model((FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True)
-
     if FLAGS.train_mode == "eager":
+        model = Model(
+            (FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True
+        )
         optimizer = Adam(FLAGS.learning_rate)
         loss_fn = SparseCategoricalCrossentropy(from_logits=True)
         acc = SparseCategoricalAccuracy()
@@ -109,6 +110,9 @@ def main(argv):
             avg_acc.reset_state()
 
     elif FLAGS.train_mode == "graph":
+        model = Model(
+            (FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True
+        )
 
         def scheduler(epoch):
 
@@ -144,18 +148,21 @@ def main(argv):
     elif FLAGS.train_mode == "hyperparameter":
 
         # Declare the ranges of the sweep
-        HP_LR_TYPES = hp.HParam("lr_type", hp.Discrete["static", "dynamic"])
+        HP_LR_TYPES = hp.HParam("lr_type", hp.Discrete(["static", "dynamic"]))
         HP_LRS = hp.HParam("learning_rate", hp.Discrete([1e-2, 1e-3]))
         HP_EPOCHS = hp.HParam("epochs", hp.Discrete([5, 10, 15]))
 
-        def run(model, hparams):
+        def run(hparams):
+            model = Model(
+                (FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True
+            )
             model.compile(
-                optimizer=Adam(hparams["learning_rate"]),
+                optimizer=Adam(hparams[HP_LRS]),
                 loss=SparseCategoricalCrossentropy(from_logits=True),
                 metrics=[SparseCategoricalAccuracy()],
             )
 
-            if hparams["lr_type"] == "static":
+            if hparams[HP_LR_TYPES] == "static":
                 callbacks = [
                     TensorBoard(log_dir=FLAGS.logdir),
                     hp.KerasCallback(FLAGS.logdir, hparams),  # log hparams
@@ -170,12 +177,13 @@ def main(argv):
 
             history = model.fit(
                 train_dataset,
-                epochs=hparams["epochs"],
+                epochs=hparams[HP_EPOCHS],
                 callbacks=callbacks,
                 validation_data=test_dataset,
             )
 
         # Perform the grid search
+        session_num = 0
         for lr_type in HP_LR_TYPES.domain.values:
             for lr in HP_LRS.domain.values:
                 for epochs in HP_EPOCHS.domain.values:
@@ -184,6 +192,12 @@ def main(argv):
                         HP_LRS: lr,
                         HP_EPOCHS: epochs,
                     }
+
+                    run_name = "run-%d" % session_num
+                    print("--- Starting trial: %s" % run_name)
+                    print({h.name: hparams[h] for h in hparams})
+                    run(hparams)
+                    session_num += 1
 
 
 if __name__ == "__main__":
