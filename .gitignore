@@ -3,3 +3,4 @@ logs/
 results/
 .bash_history
 .keras
+.nv

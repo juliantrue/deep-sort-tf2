@@ -23,7 +23,7 @@ run:
 # Train with the best hyperparameters
 .PHONY: train
 train:
-	python3 deepsort/deep/train.py
+	python3 deepsort/deep/train.py --mode=eager
 
 # Test the result of the best hyperparameters
 .PHONY: test

@@ -18,6 +18,7 @@ from tensorboard.plugins.hparams import api as hp
 
 from model import Model
 from dataset import load_train_dataset, load_test_dataset
+from hessian_penalty import hessian_penalty
 
 
 flags.DEFINE_string(
@@ -26,12 +27,15 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     "test_dataset", "data/test", "Path to testing dataset",
 )
+flags.DEFINE_boolean(
+    "hessian_penalty", False, "Train with the hessian_penalty on the last layer"
+)
 flags.DEFINE_string("logdir", "logs", "Path to logdir")
 flags.DEFINE_integer("epochs", 10, "number of epochs")
 flags.DEFINE_integer("batch_size", 128, "batch size")
 flags.DEFINE_float("learning_rate", 1e-3, "learning rate")
 flags.DEFINE_enum(
-    "train_mode",
+    "mode",
     "graph",
     ["eager", "graph", "hyperparameter"],
     (
@@ -51,7 +55,7 @@ def main(argv):
     logging.info("Done!")
 
     logging.info("Creating model and starting training.")
-    if FLAGS.train_mode == "eager":
+    if FLAGS.mode == "eager":
         model = Model(
             (FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True
         )
@@ -60,6 +64,7 @@ def main(argv):
         acc = SparseCategoricalAccuracy()
         avg_acc = tf.keras.metrics.Mean()
         avg_loss = tf.keras.metrics.Mean()
+        avg_hp_loss = tf.keras.metrics.Mean()
         avg_val_loss = tf.keras.metrics.Mean()
 
         # Iterate over epochs.
@@ -74,11 +79,14 @@ def main(argv):
 
                     # Calculate loss
                     loss = loss_fn(tf.cast(y_batch_train, tf.float32), inference)
+                    hp_loss = hessian_penalty(model, z=x_batch_train)
+                    # print(hp_loss)
 
                 # Apply gradients
                 grads = tape.gradient(loss, model.trainable_weights)
                 optimizer.apply_gradients(zip(grads, model.trainable_weights))
                 avg_loss.update_state(loss)
+                avg_hp_loss.update_state(loss)
 
                 if step % 10 == 0:
                     print("step {}: loss = {:.4f}".format(step, avg_loss.result()))
@@ -101,15 +109,20 @@ def main(argv):
 
                 if step % 10 == 0:
                     print(
-                        "step {}: loss = {:.4f}, acc = {:.4f}".format(
-                            step, avg_val_loss.result(), avg_acc.result()
+                        "step {}: loss = {:.4f}, hp_loss={:.4f}, acc = {:.4f}".format(
+                            step,
+                            avg_val_loss.result(),
+                            avg_hp_loss.result(),
+                            avg_acc.result(),
                         )
                     )
+
+            avg_hp_loss.reset_state()
             avg_loss.reset_state()
             avg_val_loss.reset_state()
             avg_acc.reset_state()
 
-    elif FLAGS.train_mode == "graph":
+    elif FLAGS.mode == "graph":
         model = Model(
             (FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True
         )
@@ -145,7 +158,7 @@ def main(argv):
             verbose=1,
         )
 
-    elif FLAGS.train_mode == "hyperparameter":
+    elif FLAGS.mode == "hyperparameter":
 
         # Declare the ranges of the sweep
         HP_LR_TYPES = hp.HParam("lr_type", hp.Discrete(["static", "dynamic"]))
