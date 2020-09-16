@@ -10,7 +10,8 @@ RUN apt-get update && apt-get -y  --no-install-recommends install \
 RUN pip3 --no-cache-dir install \
       tqdm \
       opencv-python \ 
-      tensorflow_datasets
+      tensorflow_datasets \
+      tensorflow-probability
 
 
 
