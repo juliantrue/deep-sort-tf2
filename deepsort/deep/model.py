@@ -59,7 +59,14 @@ def residual(x, filters, strides=1, dropout_rate=0.6):
     return x
 
 
-def Model(size, channels=3, num_classes=1500, feature_dim=128, training=False):
+def Model(
+    size,
+    channels=3,
+    num_classes=1501,
+    feature_dim=128,
+    training=False,
+    bypass_top=False,
+):
     x = inputs = Input([size[0], size[1], channels], name="input")
     x = conv(x, 32)
     x = conv(x, 32)
@@ -70,21 +77,75 @@ def Model(size, channels=3, num_classes=1500, feature_dim=128, training=False):
     x = residual(x, 64)
     x = residual(x, 128, strides=2)
     x = residual(x, 128)
-    x = Flatten()(x)
-    x = Dropout(0.6)(x)
+    x = Flatten(name="cnn_output")(x)
+
+    if bypass_top:
+        outputs = x
+        return tf.keras.Model(inputs, outputs, name="model")
+
+    # x = Dropout(0.6)(x)
     x = BatchNormalization()(x)
     x = Dense(
         feature_dim,
         kernel_regularizer=l2(1e-8),
         kernel_initializer=TruncatedNormal(stddev=1e-3),
+        name="top_dense_0",
     )(x)
-    x = LeakyReLU()(x)
+    x = LeakyReLU(name="top_lru")(x)
     features = tf.nn.l2_normalize(x, axis=1)
 
     if training:
-        outputs = Dense(num_classes)(x)
+        outputs = Dense(num_classes, name="top_dense_1")(x)
 
     else:
         outputs = features
 
     return tf.keras.Model(inputs, outputs, name="model")
+
+
+# def Top(input_len, num_classes=1501, feature_dim=128, training=False):
+#    x = inputs = Input([input_len[1]], name="top_input")
+#    x = Dense(
+#        feature_dim,
+#        kernel_regularizer=l2(1e-8),
+#        kernel_initializer=TruncatedNormal(stddev=1e-3),
+#        name="top_dense_0",
+#    )(x)
+#    x = LeakyReLU(name="top_lru")(x)
+#    features = tf.nn.l2_normalize(x, axis=1)
+#
+#    if training:
+#        outputs = Dense(num_classes, name="top_dense_1")(x)
+#
+#    else:
+#        outputs = features
+#
+#    return tf.keras.Model(inputs, outputs, name="top")
+
+
+class Top(tf.keras.Model):
+    def __init__(self, input_len, num_classes=1501, feature_dim=128):
+        super(Top, self).__init__()
+        self.num_classes = num_classes
+        self.feature_dim = feature_dim
+        self.dense0 = Dense(
+            feature_dim,
+            kernel_regularizer=l2(1e-8),
+            kernel_initializer=TruncatedNormal(stddev=1e-3),
+            name="top_dense_0",
+        )
+        self.lru0 = LeakyReLU(name="top_lru")
+        self.dense1 = Dense(num_classes, name="top_dense_1")
+
+    def __call__(self, x, training=False):
+        x = self.dense0(x)
+        x = self.lru0(x)
+        features = tf.nn.l2_normalize(x, axis=1)
+
+        if training:
+            outputs = self.dense1(x)
+
+        else:
+            outputs = features
+
+        return outputs

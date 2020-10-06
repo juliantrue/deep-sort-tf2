@@ -1,4 +1,5 @@
 data/
+deepsort/models/
 logs/
 results/
 .bash_history

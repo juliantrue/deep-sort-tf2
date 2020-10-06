@@ -23,7 +23,7 @@ run:
 # Train with the best hyperparameters
 .PHONY: train
 train:
-	python3 deepsort/deep/train.py --mode=eager
+	python3 deepsort/deep/train.py
 
 # Test the result of the best hyperparameters
 .PHONY: test
@@ -40,6 +40,11 @@ eval:
 .PHONY: hparam_sweep
 hparam_sweep:
 	python3 deepsort/deep/train.py --train_mode hyperparameter
+
+# Fine tune with the hessian penalty
+.PHONY: fine_tune
+fine_tune:
+	python3 deepsort/deep/fine_tune.py 
 
 .PHONY: clean
 clean:

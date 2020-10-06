@@ -3,7 +3,6 @@ from absl import app, flags, logging
 from absl.flags import FLAGS
 
 import tensorflow as tf
-import tensorflow_datasets as tfds
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.metrics import SparseCategoricalAccuracy
 from tensorflow.keras.optimizers import Adam
@@ -18,7 +17,6 @@ from tensorboard.plugins.hparams import api as hp
 
 from model import Model
 from dataset import load_train_dataset, load_test_dataset
-from hessian_penalty import hessian_penalty
 
 
 flags.DEFINE_string(
@@ -31,6 +29,10 @@ flags.DEFINE_boolean(
     "hessian_penalty", False, "Train with the hessian_penalty on the last layer"
 )
 flags.DEFINE_string("logdir", "logs", "Path to logdir")
+flags.DEFINE_string(
+    "checkpoint_dir", "./deepsort/checkpoints", "Path to checkpoints directory"
+)
+flags.DEFINE_string("model_dir", "./deepsort/models", "Path to write trained model to.")
 flags.DEFINE_integer("epochs", 10, "number of epochs")
 flags.DEFINE_integer("batch_size", 128, "batch size")
 flags.DEFINE_float("learning_rate", 1e-3, "learning rate")
@@ -46,6 +48,14 @@ flags.DEFINE_enum(
 
 
 def main(argv):
+    mem_limit = 8000
+    logging.info("Setting Max Memory Usage to: {}GB".format(mem_limit / 1000))
+    gpus = tf.config.experimental.list_physical_devices("GPU")
+    tf.config.experimental.set_virtual_device_configuration(
+        gpus[0],
+        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=mem_limit)],
+    )
+
     logging.info("Loading training dataset...")
     train_dataset = load_train_dataset(FLAGS.train_dataset, FLAGS.batch_size)
     logging.info("Done!")
@@ -79,8 +89,6 @@ def main(argv):
 
                     # Calculate loss
                     loss = loss_fn(tf.cast(y_batch_train, tf.float32), inference)
-                    hp_loss = hessian_penalty(model, z=x_batch_train)
-                    # print(hp_loss)
 
                 # Apply gradients
                 grads = tape.gradient(loss, model.trainable_weights)
@@ -127,16 +135,16 @@ def main(argv):
             (FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True
         )
 
-        def scheduler(epoch):
+        # def scheduler(epoch):
 
-            if epoch < 3:
-                return FLAGS.learning_rate
+        #    if epoch < 3:
+        #        return FLAGS.learning_rate
 
-            elif epoch < 7:
-                return 1e-4
+        #    elif epoch < 7:
+        #        return 1e-4
 
-            else:
-                return 1e-5
+        #    else:
+        #        return 1e-5
 
         model.compile(
             optimizer=Adam(FLAGS.learning_rate),
@@ -145,8 +153,12 @@ def main(argv):
         )
 
         callbacks = [
-            LearningRateScheduler(scheduler, verbose=1),
-            ModelCheckpoint("checkpoints/cml_{epoch}.tf", save_weights_only=True),
+            # LearningRateScheduler(scheduler, verbose=1),
+            ReduceLROnPlateau(patience=2),
+            ModelCheckpoint(
+                "{}/".format(FLAGS.checkpoint_dir) + "extractor_{epoch}.tf",
+                save_weights_only=True,
+            ),
             TensorBoard(log_dir=FLAGS.logdir, histogram_freq=1, update_freq=1000),
         ]
 
@@ -157,6 +169,8 @@ def main(argv):
             validation_data=test_dataset,
             verbose=1,
         )
+
+        model.save("{}/extractor".format(FLAGS.model_dir))
 
     elif FLAGS.mode == "hyperparameter":
 
