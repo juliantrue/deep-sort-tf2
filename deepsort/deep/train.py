@@ -18,7 +18,6 @@ from tensorboard.plugins.hparams import api as hp
 
 from model import Model
 from dataset import load_train_dataset, load_test_dataset
-from hessian_penalty import hessian_penalty
 
 
 flags.DEFINE_string(
@@ -39,7 +38,7 @@ flags.DEFINE_enum(
     "graph",
     ["eager", "graph", "hyperparameter"],
     (
-        "Execute training with gradient tape training, graph mode training, or full "
+        "Execute training as eager (gradient tape method), graph mode training, or full "
         "hyperparameter grid search."
     ),
 )
@@ -79,8 +78,6 @@ def main(argv):
 
                     # Calculate loss
                     loss = loss_fn(tf.cast(y_batch_train, tf.float32), inference)
-                    hp_loss = hessian_penalty(model, z=x_batch_train)
-                    # print(hp_loss)
 
                 # Apply gradients
                 grads = tape.gradient(loss, model.trainable_weights)
