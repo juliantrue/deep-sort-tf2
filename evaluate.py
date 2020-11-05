@@ -49,13 +49,13 @@ def main():
             img = cv2.imread(seq_info["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
 
             # Get the detections
-            detections = create_detections(
+            bboxes, scores = create_detections(
                 seq_info["detections"], frame_idx, min_detection_height
             )
 
             # Run the tracker
             # TODO: Change the trackid from uuid back to numbers
-            bboxes, track_ids = tracker.track(img, detections=detections, tlbr=False)
+            bboxes, track_ids = tracker.track(img, bboxes, scores, tlbr=False)
 
             if draw:
                 img = draw_bboxes(img, bboxes, tlbr=False)

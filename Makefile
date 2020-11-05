@@ -36,10 +36,6 @@ eval:
 	python3 evaluate.py 
 	python3 -u -m motmetrics.apps.eval_motchallenge /MOT16/train ./results/
 
-# Perform a grid search for the best hyperparameters
-.PHONY: hparam_sweep
-hparam_sweep:
-	python3 deepsort/deep/train.py --train_mode hyperparameter
 
 .PHONY: clean
 clean:

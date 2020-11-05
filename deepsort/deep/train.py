@@ -155,6 +155,8 @@ def main(argv):
             verbose=1,
         )
 
+        # TODO: Should be a save model TBH
+
     elif FLAGS.mode == "hyperparameter":
 
         # Declare the ranges of the sweep

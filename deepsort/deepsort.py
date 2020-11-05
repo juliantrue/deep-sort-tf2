@@ -35,7 +35,7 @@ class DeepSortTracker(object):
         self.tracker = Tracker(metric, **tracker_kwargs)
 
     def track(self, img, bboxes, scores, tlbr=True, **kwargs):
-        """Tracks"""
+        """If not tblr assume its MOT testing and use ltwh"""
 
         detections = []
         for i in range(len(bboxes)):
@@ -51,10 +51,11 @@ class DeepSortTracker(object):
                 top, left, bottom, right = map(lambda x: int(x), bbox)
 
             else:
-                top, left, width, height = map(lambda x: int(x), bbox)
+                left, top, width, height = map(lambda x: int(x), bbox)
                 right = left + width
                 bottom = top + height
 
+            img = cv2.rectangle(img, (left, top), (right, bottom), (0, 0, 255))
             # Extract feature vector
             patch = img[left:right, top:bottom]
             patch = tf.expand_dims(patch, 0)

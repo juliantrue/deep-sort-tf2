@@ -35,6 +35,7 @@ def gather_sequence_info(sequence_dir, detection_file):
     detections = None
     if detection_file is not None:
         detections = np.loadtxt(detection_file, delimiter=",")
+
     groundtruth = None
     if os.path.exists(groundtruth_file):
         groundtruth = np.loadtxt(groundtruth_file, delimiter=",")
@@ -111,4 +112,4 @@ def create_detections(detection_mat, frame_idx, min_height=0):
             bboxes.append(bbox)
             scores.append(confidence)
 
-    return (bboxes, scores)
+    return bboxes, scores

@@ -11,7 +11,8 @@ RUN pip3 --no-cache-dir install \
       tqdm \
       opencv-python \ 
       tensorflow_datasets \
-      tensorflow-probability
+      scipy \
+      motmetrics
 
 
 
