@@ -7,7 +7,7 @@ from tensorflow.keras.layers import (
     Dense,
     Dropout,
     Flatten,
-    LeakyReLU,
+    ELU,
     MaxPooling2D,
     Multiply,
     BatchNormalization,
@@ -34,7 +34,7 @@ def conv(x, filters, strides=1, weight_decay=1e-8, bn=True):
     if bn:
         x = BatchNormalization()(x)
 
-    x = LeakyReLU()(x)
+    x = ELU()(x)
     return x
 
 
@@ -65,11 +65,11 @@ def Model(size, channels=3, num_classes=1500, feature_dim=128, training=False):
     x = conv(x, 32)
     x = MaxPooling2D((3, 3), (2, 2), padding="same")(x)
     x = residual(x, 32)
-    # x = residual(x, 32)
+    x = residual(x, 32)
     x = residual(x, 64, strides=2)
-    # x = residual(x, 64)
+    x = residual(x, 64)
     x = residual(x, 128, strides=2)
-    # x = residual(x, 128)
+    x = residual(x, 128)
     x = Flatten()(x)
     x = Dropout(0.6)(x)
     x = BatchNormalization()(x)
@@ -78,7 +78,6 @@ def Model(size, channels=3, num_classes=1500, feature_dim=128, training=False):
         kernel_regularizer=l2(1e-8),
         kernel_initializer=TruncatedNormal(stddev=1e-3),
     )(x)
-    x = LeakyReLU()(x)
     features = tf.nn.l2_normalize(x, axis=1)
 
     if training:

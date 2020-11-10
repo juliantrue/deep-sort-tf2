@@ -13,26 +13,46 @@ from .deep import Model as Extractor
 class DeepSortTracker(object):
     def __init__(
         self,
-        nn_budget=100,
+        nn_budget=None,
         max_cosine_distance=0.5,
         nms_max_overlap=0.3,
         min_confidence=0.8,
-        **tracker_kwargs
+        max_iou_distance=0.7,
+        n_init=3,
     ):
         """asdfasdfasdasdf"""
+        gpus = tf.config.experimental.list_physical_devices("GPU")
+        if gpus:
+            try:
+                tf.config.experimental.set_memory_growth(gpus[0], True)
+                # tf.config.experimental.set_virtual_device_configuration(
+                #    gpus[0],
+                #    [
+                #        tf.config.experimental.VirtualDeviceConfiguration(
+                #            memory_limit=1024
+                #        )
+                #    ],
+                # )
+            except RuntimeError as e:
+                print(e)
+
+        self.input_shape = [128, 64]  # Height, width
 
         # Load the feature extraction network from checkpoints
         parent_dir = os.path.dirname(__file__)
-        self.extractor = Extractor([64, 128])
-        self.extractor.load_weights(
-            os.path.join(parent_dir, "checkpoints/extractor.tf")
+        # self.extractor = Extractor([128, 64])
+        # self.extractor.load_weights(
+        #    os.path.join(parent_dir, "checkpoints/extractor.tf")
+        # )
+        self.extractor = tf.keras.models.load_model(
+            os.path.join(parent_dir, "models/original_2020-11-06 02:01:33.498292")
         )
 
         # Configure the SORT tracker
         self.min_confidence = min_confidence
         self.nms_max_overlap = nms_max_overlap
         metric = NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
-        self.tracker = Tracker(metric, **tracker_kwargs)
+        self.tracker = Tracker(metric, max_iou_distance=max_iou_distance, n_init=n_init)
 
     def track(self, img, bboxes, scores, tlbr=True, **kwargs):
         """If not tblr assume its MOT testing and use ltwh"""
@@ -65,7 +85,7 @@ class DeepSortTracker(object):
                 continue
 
             # Resize and normalize
-            patch = tf.image.resize(patch, [64, 128])
+            patch = tf.image.resize(patch, self.input_shape)
             patch /= 255
 
             # Inference on the bbox

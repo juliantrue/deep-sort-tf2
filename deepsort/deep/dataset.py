@@ -3,8 +3,6 @@ from absl import flags
 from absl.flags import FLAGS
 import tensorflow as tf
 
-flags.DEFINE_integer("img_width", 64, "image width")
-flags.DEFINE_integer("img_height", 128, "image height")
 
 feature_description = {
     "label": tf.io.FixedLenFeature([], tf.int64),

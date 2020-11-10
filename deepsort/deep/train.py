@@ -1,4 +1,4 @@
-import os
+import os, datetime
 from absl import app, flags, logging
 from absl.flags import FLAGS
 
@@ -16,18 +16,16 @@ from tensorflow.keras.callbacks import (
 
 from tensorboard.plugins.hparams import api as hp
 
-from model import Model
 from dataset import load_train_dataset, load_test_dataset
 
-
+flags.DEFINE_boolean(
+    "original", True, "Whether or not a to use original model from the paper."
+)
 flags.DEFINE_string(
     "train_dataset", "data/train", "Path to training dataset",
 )
 flags.DEFINE_string(
     "test_dataset", "data/test", "Path to testing dataset",
-)
-flags.DEFINE_boolean(
-    "hessian_penalty", False, "Train with the hessian_penalty on the last layer"
 )
 flags.DEFINE_string("logdir", "logs", "Path to logdir")
 flags.DEFINE_integer("epochs", 10, "number of epochs")
@@ -42,6 +40,8 @@ flags.DEFINE_enum(
         "hyperparameter grid search."
     ),
 )
+flags.DEFINE_integer("img_height", 128, "image height")
+flags.DEFINE_integer("img_width", 64, "image width")
 
 
 def main(argv):
@@ -54,6 +54,13 @@ def main(argv):
     logging.info("Done!")
 
     logging.info("Creating model and starting training.")
+
+    if FLAGS.original:
+        from original import Model
+
+    else:
+        from model import Model
+
     if FLAGS.mode == "eager":
         model = Model(
             (FLAGS.img_height, FLAGS.img_width), num_classes=1501, training=True
@@ -142,8 +149,8 @@ def main(argv):
         )
 
         callbacks = [
-            LearningRateScheduler(scheduler, verbose=1),
-            ModelCheckpoint("checkpoints/cml_{epoch}.tf", save_weights_only=True),
+            # LearningRateScheduler(scheduler, verbose=1),
+            # ModelCheckpoint("checkpoints/cml_{epoch}.tf", save_weights_only=True),
             TensorBoard(log_dir=FLAGS.logdir, histogram_freq=1, update_freq=1000),
         ]
 
@@ -155,7 +162,14 @@ def main(argv):
             verbose=1,
         )
 
-        # TODO: Should be a save model TBH
+        save_path = "deepsort/models/{}_{}"
+        if FLAGS.original:
+            save_path = save_path.format("original", str(datetime.datetime.now()))
+
+        else:
+            save_path = save_path.format("model", str(datetime.datetime.now()))
+
+        model.save(save_path)
 
     elif FLAGS.mode == "hyperparameter":
 
