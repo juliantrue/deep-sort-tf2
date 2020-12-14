@@ -46,7 +46,7 @@ class DeepSortTracker(object):
     def track(self, img, bboxes, scores, tlbr=True):
         """If not tblr assume its MOT testing and use ltwh"""
 
-        detections = []
+        patches = []
         for i in range(len(bboxes)):
             score = scores[i]
 
@@ -67,7 +67,7 @@ class DeepSortTracker(object):
             img = cv2.rectangle(img, (left, top), (right, bottom), (0, 0, 255))
             # Extract feature vector
             patch = img[left:right, top:bottom]
-            patch = tf.expand_dims(patch, 0)
+            # patch = tf.expand_dims(patch, 0)
 
             # Check just in case
             if 0 in patch.shape:
@@ -76,12 +76,14 @@ class DeepSortTracker(object):
             # Resize and normalize
             patch = tf.image.resize(patch, self.input_shape)
             patch /= 255
+            patches.append(patch)
 
-            # Inference on the bbox
-            feature = np.squeeze(self.extractor.predict(patch))
+        # Inference on the bbox
+        patches = np.stack(patches)
+        features = self.extractor.predict(patches)
 
-            # Create detection
-            detections.append(Detection(bbox, score, feature))
+        # Create detection
+        detections = [Detection(bbox, score, feature) for feature in features]
 
         # Run non-maxima suppression.
         boxes = np.array([d.tlwh for d in detections])
