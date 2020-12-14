@@ -56,8 +56,12 @@ def main(argv):
     logging.info("Done!")
 
     logging.info("Creating model and starting testing.")
-    model = Model((FLAGS.img_height, FLAGS.img_width), num_classes=1500, training=True)
-    model.load_weights(FLAGS.weights_path)
+    model = tf.keras.models.load_model(
+        "~/deepsort/models/original_2020-11-06 02:01:33.498292"
+    )
+
+    # model = Model((FLAGS.img_height, FLAGS.img_width), num_classes=1500, training=True)
+    # model.load_weights(FLAGS.weights_path)
 
     @tf.function
     def loss_fn(label, inference):

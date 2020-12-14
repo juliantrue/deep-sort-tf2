@@ -1,4 +1,4 @@
-import os
+import os, time
 import cv2
 import numpy as np
 import tensorflow as tf
@@ -25,14 +25,7 @@ class DeepSortTracker(object):
         if gpus:
             try:
                 tf.config.experimental.set_memory_growth(gpus[0], True)
-                # tf.config.experimental.set_virtual_device_configuration(
-                #    gpus[0],
-                #    [
-                #        tf.config.experimental.VirtualDeviceConfiguration(
-                #            memory_limit=1024
-                #        )
-                #    ],
-                # )
+
             except RuntimeError as e:
                 print(e)
 
@@ -40,10 +33,6 @@ class DeepSortTracker(object):
 
         # Load the feature extraction network from checkpoints
         parent_dir = os.path.dirname(__file__)
-        # self.extractor = Extractor([128, 64])
-        # self.extractor.load_weights(
-        #    os.path.join(parent_dir, "checkpoints/extractor.tf")
-        # )
         self.extractor = tf.keras.models.load_model(
             os.path.join(parent_dir, "models/original_2020-11-06 02:01:33.498292")
         )
@@ -54,7 +43,7 @@ class DeepSortTracker(object):
         metric = NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
         self.tracker = Tracker(metric, max_iou_distance=max_iou_distance, n_init=n_init)
 
-    def track(self, img, bboxes, scores, tlbr=True, **kwargs):
+    def track(self, img, bboxes, scores, tlbr=True):
         """If not tblr assume its MOT testing and use ltwh"""
 
         detections = []
@@ -89,7 +78,6 @@ class DeepSortTracker(object):
             patch /= 255
 
             # Inference on the bbox
-            # TODO: Faster to inference on all in a batch?
             feature = np.squeeze(self.extractor.predict(patch))
 
             # Create detection

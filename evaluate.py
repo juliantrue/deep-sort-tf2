@@ -1,4 +1,5 @@
 import os
+import time
 import cv2
 import multiprocessing
 import numpy as np
@@ -21,37 +22,6 @@ def draw_bboxes(img, bboxes, tlbr=True):
     return img
 
 
-def grid_search(
-    nn_budgets,
-    max_cosine_distances,
-    nms_max_overlaps,
-    min_confidences,
-    max_iou_distances,
-    n_inits,
-):
-
-    search_space = []
-    for nn_budget in nn_budgets:
-        for max_cosine_distance in max_cosine_distances:
-            for nms_max_overlap in nms_max_overlaps:
-                for min_confidence in min_confidences:
-                    for max_iou_distance in max_iou_distances:
-                        for n_init in n_inits:
-                            search_space.append(
-                                (
-                                    nn_budget,
-                                    max_cosine_distance,
-                                    nms_max_overlap,
-                                    min_confidence,
-                                    max_iou_distance,
-                                    n_init,
-                                )
-                            )
-
-    with multiprocessing.Pool(6) as pool:
-        pool.starmap(evaluate, search_space)
-
-
 def evaluate(
     nn_budget=100,
     max_cosine_distance=0.5,
@@ -65,10 +35,18 @@ def evaluate(
 
     # Configuration
     draw = False
+    mot16dets = False
+
     # WARNING: only run on the "train" split if intending to us MOT. Test has no GT
     split = "train"
     root = f"/MOT16/{split}/"
-    detections_folder = f"data/MOT16_POI_{split}"
+
+    if mot16dets:
+        detections_folder = root
+
+    else:
+        detections_folder = f"data/MOT16_POI_{split}"
+
     min_detection_height = 0
 
     print(
@@ -80,16 +58,16 @@ def evaluate(
         f"\nmax_iou_distance: {max_iou_distance}"
         f"\nn_init: {n_init}"
     )
-    results_folder = (
-        f"results/{nn_budget}_{max_cosine_distance}_"
-        f"{nms_max_overlap}_{min_confidence}_{max_iou_distance}_{n_init}"
-    )
-    if not os.path.exists(results_folder):
-        os.makedirs(results_folder)
+
+    results_folder = "results"
 
     for seq in os.listdir(root):
         sequence_dir = os.path.join(root, seq)
-        detection_file = os.path.join(detections_folder, seq + ".npy")
+        if mot16dets:
+            detection_file = os.path.join(detections_folder, seq + "/det/det.txt")
+
+        else:
+            detection_file = os.path.join(detections_folder, seq + ".npy")
         print("Running on sequence_dir: {}".format(seq))
 
         # Initialize the tracker
@@ -105,8 +83,8 @@ def evaluate(
 
         # Evaulate on MOT
         results = []
-        for frame_idx in range(
-            seq_info["min_frame_idx"], seq_info["max_frame_idx"] + 1
+        for frame_idx in tqdm(
+            range(seq_info["min_frame_idx"], seq_info["max_frame_idx"] + 1)
         ):
 
             # Get the image
@@ -118,8 +96,10 @@ def evaluate(
             )
 
             # Run the tracker
-            # TODO: Change the trackid from uuid back to numbers
+            last = time.time()
             bboxes, track_ids = tracker.track(img, bboxes, scores, tlbr=False)
+            now = time.time()
+            # print(f"{(now-last)*1000}ms")
 
             if draw:
                 img = draw_bboxes(img, bboxes, tlbr=False)
@@ -149,7 +129,6 @@ def evaluate(
 
 
 if __name__ == "__main__":
-    evaluate(128, 0.5, 0.5, 0.8, 0.7, 3)
-    # grid_search(
-    #    [25, 50, 128], [0.3, 0.5], [0.3, 0.5], [0.5, 0.8], [0.5, 0.7], [1, 2, 3]
-    # )
+    # TODO: Run each of these
+    evaluate(128, 0.3, 1.0, 0.5, 0.7, 2)  # w custom model
+    # evaluate(128, 0.3, 1.0, 0.3, 0.7, 3) # original model

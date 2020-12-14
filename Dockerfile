@@ -12,7 +12,9 @@ RUN pip3 --no-cache-dir install \
       opencv-python \ 
       tensorflow_datasets \
       scipy \
-      motmetrics
+      motmetrics \
+      matplotlib \
+      seaborn
 
 
 

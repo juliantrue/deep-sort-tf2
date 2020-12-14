@@ -19,7 +19,7 @@ from tensorboard.plugins.hparams import api as hp
 from dataset import load_train_dataset, load_test_dataset
 
 flags.DEFINE_boolean(
-    "original", True, "Whether or not a to use original model from the paper."
+    "original", False, "Whether or not a to use original model from the paper."
 )
 flags.DEFINE_string(
     "train_dataset", "data/train", "Path to training dataset",
