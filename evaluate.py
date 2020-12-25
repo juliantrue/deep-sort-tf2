@@ -98,7 +98,7 @@ def evaluate(
             last = time.time()
             bboxes, track_ids = tracker.track(img, bboxes, scores, tlbr=False)
             now = time.time()
-            print(f"{(now-last)*1000}ms")
+            # print(f"{(now-last)*1000}ms")
 
             if draw:
                 img = draw_bboxes(img, bboxes, tlbr=False)

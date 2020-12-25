@@ -79,8 +79,12 @@ class DeepSortTracker(object):
             patches.append(patch)
 
         # Inference on the bbox
-        patches = np.stack(patches)
-        features = self.extractor.predict(patches)
+        if len(patches) > 0:
+            patches = np.stack(patches)
+            features = self.extractor.predict(patches)
+
+        else:
+            features = []
 
         # Create detection
         detections = [Detection(bbox, score, feature) for feature in features]
