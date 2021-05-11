@@ -34,7 +34,7 @@ test:
 .PHONY: eval
 eval:
 	python3 evaluate.py 
-	python3 -u -m motmetrics.apps.eval_motchallenge /MOT16/train ./results/
+	python3 -u -m motmetrics.apps.eval_motchallenge /MOT16/train ./results/ --fmt mot16 --loglevel debug
 
 
 .PHONY: clean

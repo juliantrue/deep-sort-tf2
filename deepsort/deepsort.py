@@ -33,9 +33,13 @@ class DeepSortTracker(object):
 
         # Load the feature extraction network from checkpoints
         parent_dir = os.path.dirname(__file__)
-        self.extractor = tf.keras.models.load_model(
-            os.path.join(parent_dir, "models/original_2020-11-06 02:01:33.498292")
-        )
+        # self.extractor = tf.keras.models.load_model(
+        #    os.path.join(parent_dir, "models/original_2020-11-06 02:01:33.498292")
+        # )
+        self.extractor = Extractor(self.input_shape)
+        self.extractor.load_weights(
+            os.path.join(parent_dir, "../checkpoints/extractor.tf")
+        ).expect_partial()
 
         # Configure the SORT tracker
         self.min_confidence = min_confidence
@@ -43,11 +47,12 @@ class DeepSortTracker(object):
         metric = NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget)
         self.tracker = Tracker(metric, max_iou_distance=max_iou_distance, n_init=n_init)
 
-    def track(self, img, bboxes, scores, tlbr=True):
+    def track(self, img, in_bboxes, scores, tlbr=True):
         """If not tblr assume its MOT testing and use ltwh"""
 
         patches = []
-        for i in range(len(bboxes)):
+        bboxes = []
+        for i in range(len(in_bboxes)):
             score = scores[i]
 
             # Skip if not confident enough
@@ -55,7 +60,7 @@ class DeepSortTracker(object):
                 continue
 
             # Unpack the bbox
-            bbox = bboxes[i]
+            bbox = in_bboxes[i]
             if tlbr:
                 top, left, bottom, right = map(lambda x: int(x), bbox)
 
@@ -64,13 +69,13 @@ class DeepSortTracker(object):
                 right = left + width
                 bottom = top + height
 
-            img = cv2.rectangle(img, (left, top), (right, bottom), (0, 0, 255))
             # Extract feature vector
-            patch = img[left:right, top:bottom]
+            patch = img[top:bottom, left:right]
             # patch = tf.expand_dims(patch, 0)
 
             # Check just in case
             if 0 in patch.shape:
+                print("skipping due to zeros")
                 continue
 
             # Resize and normalize
@@ -87,7 +92,9 @@ class DeepSortTracker(object):
             features = []
 
         # Create detection
-        detections = [Detection(bbox, score, feature) for feature in features]
+        detections = [
+            Detection(bbox, 1, feature) for bbox, feature in zip(in_bboxes, features)
+        ]
 
         # Run non-maxima suppression.
         boxes = np.array([d.tlwh for d in detections])

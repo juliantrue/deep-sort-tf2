@@ -19,16 +19,20 @@ from tensorboard.plugins.hparams import api as hp
 from dataset import load_train_dataset, load_test_dataset
 
 flags.DEFINE_boolean(
-    "original", False, "Whether or not a to use original model from the paper."
+    "original", True, "Whether or not a to use original model from the paper."
 )
 flags.DEFINE_string(
-    "train_dataset", "data/train", "Path to training dataset",
+    "train_dataset",
+    "data/train",
+    "Path to training dataset",
 )
 flags.DEFINE_string(
-    "test_dataset", "data/test", "Path to testing dataset",
+    "test_dataset",
+    "data/test",
+    "Path to testing dataset",
 )
 flags.DEFINE_string("logdir", "logs", "Path to logdir")
-flags.DEFINE_integer("epochs", 10, "number of epochs")
+flags.DEFINE_integer("epochs", 6, "number of epochs")
 flags.DEFINE_integer("batch_size", 128, "batch size")
 flags.DEFINE_float("learning_rate", 1e-3, "learning rate")
 flags.DEFINE_enum(
@@ -150,7 +154,7 @@ def main(argv):
 
         callbacks = [
             # LearningRateScheduler(scheduler, verbose=1),
-            # ModelCheckpoint("checkpoints/cml_{epoch}.tf", save_weights_only=True),
+            ModelCheckpoint("checkpoints/cml_{epoch}.tf", save_weights_only=True),
             TensorBoard(log_dir=FLAGS.logdir, histogram_freq=1, update_freq=1000),
         ]
 

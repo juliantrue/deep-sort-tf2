@@ -129,5 +129,4 @@ def evaluate(
 
 if __name__ == "__main__":
     # TODO: Run each of these
-    evaluate(128, 0.3, 1.0, 0.5, 0.7, 2)  # w custom model
-    # evaluate(128, 0.3, 1.0, 0.3, 0.7, 3) # original model
+    evaluate(128, 0.3, 1.0, 0.5, 0.7, 2)
