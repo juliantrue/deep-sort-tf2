@@ -1,3 +1,5 @@
+THIS IS STILL A WORK IN PROGRESS. USE AT YOUR OWN RISK
+
 # Setup
 This project will only run on a linux based OS.
 
